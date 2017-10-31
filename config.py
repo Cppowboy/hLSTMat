@@ -1,10 +1,10 @@
 from jobman import DD
 
 # the dir where there should be a subdir named 'youtube2text_iccv15'
-RAB_DATASET_BASE_PATH = '/mnt/disk2/guozhao/predatas/MSVD/'
-RAB_FEATURE_BASE_PATH = '/mnt/disk2/guozhao/features/MSVD/ResNet_152/'
+RAB_DATASET_BASE_PATH = '/mnt/lustre/panyinxu/data/msvd/youtube2text_iccv15/'
+RAB_FEATURE_BASE_PATH = '/mnt/lustre/panyinxu/data/msvd/npy/'
 # the dir where all the experiment data is dumped.
-RAB_EXP_PATH = '/home/guozhao/results/hLSTMat/'
+RAB_EXP_PATH = '/mnt/lustre/panyinxu/hLSTMat/results/hLSTMat/'
 
 config = DD({
     'model': 'attention',
@@ -26,7 +26,7 @@ config = DD({
         'prev2out':True, 
         'ctx2out':True, 
         'patience':20,
-        'max_epochs':500, 
+        'max_epochs':500,
         'decay_c':1e-4,
         'alpha_entropy_r': 0.,
         'alpha_c':0.70602,

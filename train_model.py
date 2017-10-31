@@ -14,7 +14,7 @@ import data_engine
 import metrics
 import utils
 
-from optimizers import adadelta
+from optimizers import adadelta, sgd
 from model_hLSTMat.layers import Layers
 from model_hLSTMat.model import Model
 
@@ -23,9 +23,9 @@ from jobman import DD, expand
 
 
 def train(random_seed=1234,
-          dim_word=256, # word vector dimensionality
-          ctx_dim=-1, # context vector dimensionality, auto set
-          dim=1000, # the number of LSTM units
+          dim_word=256,  # word vector dimensionality
+          ctx_dim=-1,  # context vector dimensionality, auto set
+          dim=1000,  # the number of LSTM units
           n_layers_out=1,
           n_layers_init=1,
           encoder='none',
@@ -41,15 +41,16 @@ def train(random_seed=1234,
           lrate=0.01,
           selector=False,
           n_words=100000,
-          maxlen=100, # maximum length of the description
-          optimizer='adadelta',
+          maxlen=100,  # maximum length of the description
+          # optimizer='adadelta',
+          optimizer='sgd',
           clip_c=2.,
-          batch_size = 64,
-          valid_batch_size = 64,
+          batch_size=64,
+          valid_batch_size=64,
           save_model_dir='/data/lisatmp3/yaoli/exp/capgen_vid/attention/test/',
           validFreq=10,
-          saveFreq=10, # save the parameters after every saveFreq updates
-          sampleFreq=10, # generate some samples after every sampleFreq updates
+          saveFreq=10,  # save the parameters after every saveFreq updates
+          sampleFreq=10,  # generate some samples after every sampleFreq updates
           metric='blue',
           dataset='youtube2text',
           video_feature='googlenet',
@@ -66,7 +67,7 @@ def train(random_seed=1234,
     model_options = locals().copy()
     if 'self' in model_options:
         del model_options['self']
-    with open('%smodel_options.pkl'%save_model_dir, 'wb') as f:
+    with open('%smodel_options.pkl' % save_model_dir, 'wb') as f:
         pkl.dump(model_options, f)
 
     # instance model
@@ -95,7 +96,7 @@ def train(random_seed=1234,
 
     # reloading
     if reload_:
-        model_saved = from_dir+'/model_best_so_far.npz'
+        model_saved = from_dir + '/model_best_so_far.npz'
         assert os.path.isfile(model_saved)
         print "Reloading model params..."
         params = utils.load_params(model_saved, params)
@@ -103,9 +104,9 @@ def train(random_seed=1234,
     tparams = utils.init_tparams(params)
 
     trng, use_noise, \
-          x, mask, ctx, mask_ctx, \
-          cost, extra = \
-          model.build_model(tparams, model_options)
+    x, mask, ctx, mask_ctx, \
+    cost, extra = \
+        model.build_model(tparams, model_options)
     alphas = extra[1]
     betas = extra[2]
     print 'buliding sampler'
@@ -126,14 +127,14 @@ def train(random_seed=1234,
 
     if alpha_c > 0.:
         alpha_c = theano.shared(numpy.float32(alpha_c), name='alpha_c')
-        alpha_reg = alpha_c * ((1.-alphas.sum(0))**2).sum(-1).mean()
+        alpha_reg = alpha_c * ((1. - alphas.sum(0)) ** 2).sum(-1).mean()
         cost += alpha_reg
 
     if alpha_entropy_r > 0:
         alpha_entropy_r = theano.shared(numpy.float32(alpha_entropy_r),
                                         name='alpha_entropy_r')
         alpha_reg_2 = alpha_entropy_r * (-tensor.sum(alphas *
-                    tensor.log(alphas+1e-8),axis=-1)).sum(-1).mean()
+                                                     tensor.log(alphas + 1e-8), axis=-1)).sum(-1).mean()
         cost += alpha_reg_2
     else:
         alpha_reg_2 = tensor.zeros_like(cost)
@@ -148,21 +149,24 @@ def train(random_seed=1234,
     if clip_c > 0.:
         g2 = 0.
         for g in grads:
-            g2 += (g**2).sum()
+            g2 += (g ** 2).sum()
         new_grads = []
         for g in grads:
-            new_grads.append(tensor.switch(g2 > (clip_c**2),
+            new_grads.append(tensor.switch(g2 > (clip_c ** 2),
                                            g / tensor.sqrt(g2) * clip_c,
                                            g))
         grads = new_grads
 
     lr = tensor.scalar(name='lr')
     print 'build train fns'
-    f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads,
-                                              [x, mask, ctx, mask_ctx], cost,
-                                              extra + grads)
-
-    print 'compilation took %.4f sec'%(time.time()-t0)
+    print 'optimizer is ' + optimizer
+    if optimizer == 'adadelta':
+        f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads,
+                                                  [x, mask, ctx, mask_ctx], cost,
+                                                  extra + grads)
+    else:
+        f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, [x, mask, ctx, mask_ctx], cost)
+    print 'compilation took %.4f sec' % (time.time() - t0)
     print 'Optimization'
 
     history_errs = []
@@ -170,7 +174,7 @@ def train(random_seed=1234,
     if reload_:
         print 'loading history error...'
         history_errs = numpy.load(
-            from_dir+'model_best_so_far.npz')['history_errs'].tolist()
+            from_dir + 'model_best_so_far.npz')['history_errs'].tolist()
 
     bad_counter = 0
 
@@ -219,10 +223,12 @@ def train(random_seed=1234,
             grads_record.append(grads)
             if NaN_keys != []:
                 print 'grads contain NaN'
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             if numpy.isnan(cost) or numpy.isinf(cost):
                 print 'NaN detected in cost'
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             # update params
             f_update(lrate)
             ud_duration = time.time() - ud_start
@@ -235,13 +241,13 @@ def train(random_seed=1234,
 
             if numpy.mod(uidx, dispFreq) == 0:
                 print 'Epoch ', eidx, 'Update ', uidx, 'Train cost mean so far', \
-                  train_error, 'fetching data time spent (sec)', pd_duration, \
-                  'update time spent (sec)', ud_duration, 'save_dir', save_model_dir
-                alphas, betas = f_alpha(x,mask,ctx,ctx_mask)
+                    train_error, 'fetching data time spent (sec)', pd_duration, \
+                    'update time spent (sec)', ud_duration, 'save_dir', save_model_dir
+                alphas, betas = f_alpha(x, mask, ctx, ctx_mask)
                 counts = mask.sum(0)
                 betas_mean = (betas * mask).sum(0) / counts
                 betas_mean = betas_mean.mean()
-                print 'alpha ratio %.3f, betas mean %.3f'%(
+                print 'alpha ratio %.3f, betas mean %.3f' % (
                     alphas.min(-1).mean() / (alphas.max(-1)).mean(), betas_mean)
                 l = 0
                 for vv in x[:, 0]:
@@ -265,25 +271,25 @@ def train(random_seed=1234,
                 ctx_s = ctx
                 ctx_mask_s = ctx_mask
                 model.sample_execute(engine, model_options, tparams,
-                                          f_init, f_next, x_s, ctx_s, ctx_mask_s, trng)
+                                     f_init, f_next, x_s, ctx_s, ctx_mask_s, trng)
                 print '------------- sampling from valid ----------'
                 idx = engine.kf_valid[numpy.random.randint(1, len(engine.kf_valid) - 1)]
                 tags = [engine.valid[index] for index in idx]
                 x_s, mask_s, ctx_s, mask_ctx_s = data_engine.prepare_data(engine, tags)
                 model.sample_execute(engine, model_options, tparams,
-                                          f_init, f_next, x_s, ctx_s, mask_ctx_s, trng)
+                                     f_init, f_next, x_s, ctx_s, mask_ctx_s, trng)
 
             if validFreq != -1 and numpy.mod(uidx, validFreq) == 0:
                 t0_valid = time.time()
-                alphas,_ = f_alpha(x, mask, ctx, ctx_mask)
-                ratio = alphas.min(-1).mean()/(alphas.max(-1)).mean()
+                alphas, _ = f_alpha(x, mask, ctx, ctx_mask)
+                ratio = alphas.min(-1).mean() / (alphas.max(-1)).mean()
                 alphas_ratio.append(ratio)
-                numpy.savetxt(save_model_dir+'alpha_ratio.txt',alphas_ratio)
+                numpy.savetxt(save_model_dir + 'alpha_ratio.txt', alphas_ratio)
 
                 current_params = utils.unzip(tparams)
                 numpy.savez(
-                         save_model_dir+'model_current.npz',
-                         history_errs=history_errs, **current_params)
+                    save_model_dir + 'model_current.npz',
+                    history_errs=history_errs, **current_params)
 
                 use_noise.set_value(0.)
                 train_err = -1
@@ -297,8 +303,8 @@ def train(random_seed=1234,
                     if 0:
                         print 'computing cost on trainset'
                         train_err, train_perp = model.pred_probs(
-                                engine, 'train', f_log_probs,
-                                verbose=model_options['verbose'])
+                            engine, 'train', f_log_probs,
+                            verbose=model_options['verbose'])
                     else:
                         train_err = 0.
                         train_perp = 0.
@@ -307,7 +313,7 @@ def train(random_seed=1234,
                         valid_err, valid_perp = model.pred_probs(
                             engine, 'valid', f_log_probs,
                             verbose=model_options['verbose'],
-                            )
+                        )
                     else:
                         valid_err = 0.
                         valid_perp = 0.
@@ -316,7 +322,7 @@ def train(random_seed=1234,
                         test_err, test_perp = model.pred_probs(
                             engine, 'test', f_log_probs,
                             verbose=model_options['verbose']
-                            )
+                        )
                     else:
                         test_err = 0.
                         test_perp = 0.
@@ -325,18 +331,18 @@ def train(random_seed=1234,
                 blue_t0 = time.time()
                 scores, processes, queue, rqueue, shared_params = \
                     metrics.compute_score(
-                    model_type='attention',
-                    model_archive=current_params,
-                    options=model_options,
-                    engine=engine,
-                    save_dir=save_model_dir,
-                    beam=5, n_process=5,
-                    whichset='both',
-                    on_cpu=False,
-                    processes=processes, queue=queue, rqueue=rqueue,
-                    shared_params=shared_params, metric=metric,
-                    one_time=False,
-                    f_init=f_init, f_next=f_next, model=model
+                        model_type='attention',
+                        model_archive=current_params,
+                        options=model_options,
+                        engine=engine,
+                        save_dir=save_model_dir,
+                        beam=5, n_process=5,
+                        whichset='both',
+                        on_cpu=False,
+                        processes=processes, queue=queue, rqueue=rqueue,
+                        shared_params=shared_params, metric=metric,
+                        one_time=False,
+                        f_init=f_init, f_next=f_next, model=model
                     )
                 '''
                  {'blue': {'test': [-1], 'valid': [77.7, 60.5, 48.7, 38.5, 38.3]},
@@ -363,9 +369,9 @@ def train(random_seed=1234,
                 test_Rouge = scores['test']['ROUGE_L']
                 test_Cider = scores['test']['CIDEr']
                 test_meteor = scores['test']['METEOR']
-                print 'computing meteor/blue score used %.4f sec, '\
-                  'blue score: %.1f, meteor score: %.1f'%(
-                time.time()-blue_t0, valid_B4, valid_meteor)
+                print 'computing meteor/blue score used %.4f sec, ' \
+                      'blue score: %.1f, meteor score: %.1f' % (
+                          time.time() - blue_t0, valid_B4, valid_meteor)
                 history_errs.append([eidx, uidx, train_err, train_perp,
                                      valid_perp, test_perp,
                                      valid_err, test_err,
@@ -373,50 +379,50 @@ def train(random_seed=1234,
                                      valid_B4, valid_meteor, valid_Rouge, valid_Cider,
                                      test_B1, test_B2, test_B3,
                                      test_B4, test_meteor, test_Rouge, test_Cider])
-                numpy.savetxt(save_model_dir+'train_valid_test.txt',
+                numpy.savetxt(save_model_dir + 'train_valid_test.txt',
                               history_errs, fmt='%.3f')
-                print 'save validation results to %s'%save_model_dir
+                print 'save validation results to %s' % save_model_dir
                 # save best model according to the best blue or meteor
                 if len(history_errs) > 1 and \
-                  valid_B4 > numpy.array(history_errs)[:-1,11].max():
-                    print 'Saving to %s...'%save_model_dir,
+                                valid_B4 > numpy.array(history_errs)[:-1, 11].max():
+                    print 'Saving to %s...' % save_model_dir,
                     numpy.savez(
-                        save_model_dir+'model_best_blue_or_meteor.npz',
+                        save_model_dir + 'model_best_blue_or_meteor.npz',
                         history_errs=history_errs, **best_p)
                 if len(history_errs) > 1 and \
-                  valid_err < numpy.array(history_errs)[:-1,6].min():
+                                valid_err < numpy.array(history_errs)[:-1, 6].min():
                     best_p = utils.unzip(tparams)
                     bad_counter = 0
                     best_valid_err = valid_err
                     uidx_best_valid_err = uidx
 
-                    print 'Saving to %s...'%save_model_dir,
+                    print 'Saving to %s...' % save_model_dir,
                     numpy.savez(
-                        save_model_dir+'model_best_so_far.npz',
+                        save_model_dir + 'model_best_so_far.npz',
                         history_errs=history_errs, **best_p)
-                    with open('%smodel_options.pkl'%save_model_dir, 'wb') as f:
+                    with open('%smodel_options.pkl' % save_model_dir, 'wb') as f:
                         pkl.dump(model_options, f)
                     print 'Done'
                 elif len(history_errs) > 1 and \
-                    valid_err >= numpy.array(history_errs)[:-1,6].min():
+                                valid_err >= numpy.array(history_errs)[:-1, 6].min():
                     bad_counter += 1
-                    print 'history best ',numpy.array(history_errs)[:,6].min()
-                    print 'bad_counter ',bad_counter
-                    print 'patience ',patience
+                    print 'history best ', numpy.array(history_errs)[:, 6].min()
+                    print 'bad_counter ', bad_counter
+                    print 'patience ', patience
                     if bad_counter > patience:
                         print 'Early Stop!'
                         estop = True
                         break
 
-                if test_B4>0.52 and test_meteor>0.32:
-                    print 'Saving to %s...'%save_model_dir,
+                if test_B4 > 0.52 and test_meteor > 0.32:
+                    print 'Saving to %s...' % save_model_dir,
                     numpy.savez(
-                        save_model_dir+'model_'+str(uidx)+'.npz',
+                        save_model_dir + 'model_' + str(uidx) + '.npz',
                         history_errs=history_errs, **current_params)
 
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err, \
-                  'best valid err so far',best_valid_err
-                print 'valid took %.2f sec'%(time.time() - t0_valid)
+                    'best valid err so far', best_valid_err
+                print 'valid took %.2f sec' % (time.time() - t0_valid)
                 # end of validatioin
             if debug:
                 break
@@ -426,7 +432,7 @@ def train(random_seed=1234,
             break
 
         # end for loop over minibatches
-        print 'This epoch has seen %d samples, train cost %.2f'%(
+        print 'This epoch has seen %d samples, train cost %.2f' % (
             n_samples, numpy.mean(train_costs))
     # end for loop over epochs
     print 'Optimization ended.'
@@ -437,29 +443,28 @@ def train(random_seed=1234,
     valid_err = 0
     test_err = 0
     if not debug:
-        #if valid:
+        # if valid:
         valid_err, valid_perp = model.pred_probs(
             engine, 'valid', f_log_probs,
             verbose=model_options['verbose'])
-        #if test:
-        #test_err, test_perp = self.pred_probs(
+        # if test:
+        # test_err, test_perp = self.pred_probs(
         #    'test', f_log_probs,
         #    verbose=model_options['verbose'])
 
-
-    print 'stopped at epoch %d, minibatch %d, '\
-      'curent Train %.2f, current Valid %.2f, current Test %.2f '%(
-          eidx,uidx,numpy.mean(train_err),numpy.mean(valid_err),numpy.mean(test_err))
+    print 'stopped at epoch %d, minibatch %d, ' \
+          'curent Train %.2f, current Valid %.2f, current Test %.2f ' % (
+              eidx, uidx, numpy.mean(train_err), numpy.mean(valid_err), numpy.mean(test_err))
     params = copy.copy(best_p)
-    numpy.savez(save_model_dir+'model_best.npz',
+    numpy.savez(save_model_dir + 'model_best.npz',
                 train_err=train_err,
                 valid_err=valid_err, test_err=test_err, history_errs=history_errs,
                 **params)
 
     if history_errs != []:
         history = numpy.asarray(history_errs)
-        best_valid_idx = history[:,6].argmin()
-        numpy.savetxt(save_model_dir+'train_valid_test.txt', history, fmt='%.4f')
+        best_valid_idx = history[:, 6].argmin()
+        numpy.savetxt(save_model_dir + 'train_valid_test.txt', history, fmt='%.4f')
         print 'final best exp ', history[best_valid_idx]
 
     return train_err, valid_err, test_err
@@ -510,7 +515,10 @@ def train_from_scratch(config, state, channel):
 
     t0 = time.time()
     print 'training an attention model'
-    train(**state.attention)
+    train_err, valid_err, test_err = train(**state.attention)
+    print 'train_err ', train_err
+    print 'valid_err ', valid_err
+    print 'test_err ', test_err
     if channel:
         channel.save()
     print 'training time in total %.4f sec' % (time.time() - t0)

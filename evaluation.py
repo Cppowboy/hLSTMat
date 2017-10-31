@@ -12,13 +12,14 @@ import os
 import theano
 import theano.tensor as tensor
 import numpy
+import cPickle as pickle
 
 
 def test(model_options_file='model_options.pkl',
          model_file='model_best_so_far.npz'):
     from_dir = 'model_files/'
     print 'preparing reload'
-    model_options = utils.load_pkl(from_dir+model_options_file)
+    model_options = utils.load_pkl(from_dir + model_options_file)
 
     print 'Loading data'
     engine = data_engine.Movie2Caption('attention',
@@ -52,20 +53,20 @@ def test(model_options_file='model_options.pkl',
     print 'start test...'
     blue_t0 = time.time()
     scores, processes, queue, rqueue, shared_params = \
-                    metrics.compute_score(
-                    model_type='attention',
-                    model_archive=params,
-                    options=model_options,
-                    engine=engine,
-                    save_dir=from_dir,
-                    beam=5, n_process=5,
-                    whichset='both',
-                    on_cpu=False,
-                    processes=None, queue=None, rqueue=None,
-                    shared_params=None, metric=model_options['metric'],
-                    one_time=False,
-                    f_init=f_init, f_next=f_next, model=model
-                    )
+        metrics.compute_score(
+            model_type='attention',
+            model_archive=params,
+            options=model_options,
+            engine=engine,
+            save_dir=from_dir,
+            beam=5, n_process=5,
+            whichset='both',
+            on_cpu=False,
+            processes=None, queue=None, rqueue=None,
+            shared_params=None, metric=model_options['metric'],
+            one_time=False,
+            f_init=f_init, f_next=f_next, model=model
+        )
 
     valid_B1 = scores['valid']['Bleu_1']
     valid_B2 = scores['valid']['Bleu_2']
@@ -81,10 +82,13 @@ def test(model_options_file='model_options.pkl',
     test_Rouge = scores['test']['ROUGE_L']
     test_Cider = scores['test']['CIDEr']
     test_meteor = scores['test']['METEOR']
-    print 'computing meteor/blue score used %.4f sec, '\
-          'B@1: %.3f, B@2: %.3f, B@3: %.3f, B@4: %.3f, M: %.3f'%(
-    time.time()-blue_t0, test_B1, test_B2, test_B3, test_B4, test_meteor)
+    print 'computing meteor/blue score used %.4f sec, ' \
+          'B@1: %.3f, B@2: %.3f, B@3: %.3f, B@4: %.3f, M: %.3f' % (
+              time.time() - blue_t0, test_B1, test_B2, test_B3, test_B4, test_meteor)
+    imgToEval = scores['imgToEval']
+    pickle.dump(imgToEval, open('imgToEval.pkl', 'w'))
+    print 'save imgToEval to imgToEval.pkl'
 
 
 if __name__ == '__main__':
-    test(model_file='model_10000.npz')
+    test(model_file='./result/hLSTMat/save_dir/model_best.npz')

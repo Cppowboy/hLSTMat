@@ -13,9 +13,9 @@ import config
 from multiprocessing import Process, Queue, Manager
 
 hostname = socket.gethostname()
-                
+
+
 class Movie2Caption(object):
-            
     def __init__(self, model_type, signature, video_feature,
                  mb_size_train, mb_size_test, maxlen, n_words,
                  n_frames=None, outof=None
@@ -31,15 +31,15 @@ class Movie2Caption(object):
         self.mb_size_train = mb_size_train
         self.mb_size_test = mb_size_test
         self.non_pickable = []
-        
+
         self.load_data()
-        
+
     def _filter_googlenet(self, vidID):
         feat = numpy.load(os.path.join(self.FEAT_ROOT, vidID + '.npy'))
-        #feat = self.FEAT[vidID]
+        # feat = self.FEAT[vidID]
         feat = self.get_sub_frames(feat)
         return feat
-    
+
     def get_video_features(self, vidID):
         if self.video_feature == 'googlenet':
             y = self._filter_googlenet(vidID)
@@ -51,12 +51,12 @@ class Movie2Caption(object):
         # pad frames with 0, compatible with both conv and fully connected layers
         last_frame = frames[-1]
         if jpegs:
-            frames_padded = frames + [last_frame]*(limit-len(frames))
+            frames_padded = frames + [last_frame] * (limit - len(frames))
         else:
-            padding = numpy.asarray([last_frame * 0.]*(limit-len(frames)))
+            padding = numpy.asarray([last_frame * 0.] * (limit - len(frames)))
             frames_padded = numpy.concatenate([frames, padding], axis=0)
         return frames_padded
-    
+
     def extract_frames_equally_spaced(self, frames, how_many):
         # chunk frames into 'how_many' segments and use the first frame
         # from each segment
@@ -65,22 +65,23 @@ class Movie2Caption(object):
         idx_taken = [s[0] for s in splits]
         sub_frames = frames[idx_taken]
         return sub_frames
-    
+
     def add_end_of_video_frame(self, frames):
         if len(frames.shape) == 4:
             # feat from conv layer
-            _,a,b,c = frames.shape
-            eos = numpy.zeros((1,a,b,c),dtype='float32') - 1.
+            _, a, b, c = frames.shape
+            eos = numpy.zeros((1, a, b, c), dtype='float32') - 1.
         elif len(frames.shape) == 2:
             # feat from full connected layer
-            _,b = frames.shape
-            eos = numpy.zeros((1,b),dtype='float32') - 1.
+            _, b = frames.shape
+            eos = numpy.zeros((1, b), dtype='float32') - 1.
         else:
-            import pdb; pdb.set_trace()
+            import pdb;
+            pdb.set_trace()
             raise NotImplementedError()
         frames = numpy.concatenate([frames, eos], axis=0)
         return frames
-    
+
     def get_sub_frames(self, frames, jpegs=False):
         # from all frames, take K of them, then add end of video frame
         # jpegs: to be compatible with visualizations
@@ -91,12 +92,12 @@ class Movie2Caption(object):
                 frames_ = self.pad_frames(frames_, self.OutOf, jpegs)
         else:
             if len(frames) < self.K:
-                #frames_ = self.add_end_of_video_frame(frames)
+                # frames_ = self.add_end_of_video_frame(frames)
                 frames_ = self.pad_frames(frames, self.K, jpegs)
             else:
 
                 frames_ = self.extract_frames_equally_spaced(frames, self.K)
-                #frames_ = self.add_end_of_video_frame(frames_)
+                # frames_ = self.add_end_of_video_frame(frames_)
         if jpegs:
             frames_ = numpy.asarray(frames_)
         return frames_
@@ -117,31 +118,33 @@ class Movie2Caption(object):
             feat_mask = self.get_ctx_mask(feat)
             feats_mask.append(feat_mask)
         return feats, feats_mask
-    
+
     def get_ctx_mask(self, ctx):
         if ctx.ndim == 3:
-            rval = (ctx[:,:,:self.ctx_dim].sum(axis=-1) != 0).astype('int32').astype('float32')
+            rval = (ctx[:, :, :self.ctx_dim].sum(axis=-1) != 0).astype('int32').astype('float32')
         elif ctx.ndim == 2:
-            rval = (ctx[:,:self.ctx_dim].sum(axis=-1) != 0).astype('int32').astype('float32')
+            rval = (ctx[:, :self.ctx_dim].sum(axis=-1) != 0).astype('int32').astype('float32')
         elif ctx.ndim == 5 or ctx.ndim == 4:
             assert self.video_feature == 'oxfordnet_conv3_512'
             # in case of oxfordnet features
             # (m, 26, 512, 14, 14)
             rval = (ctx.sum(-1).sum(-1).sum(-1) != 0).astype('int32').astype('float32')
         else:
-            import pdb; pdb.set_trace()
+            import pdb;
+            pdb.set_trace()
             raise NotImplementedError()
-        
+
         return rval
-        
+
     def load_data(self):
-        print 'loading youtube2text %s features'%self.video_feature
+        print 'loading youtube2text %s features' % self.video_feature
         dataset_path = config.RAB_DATASET_BASE_PATH
         feature_path = config.RAB_FEATURE_BASE_PATH
         self.train = utils.load_pkl(dataset_path + 'train.pkl')
         self.valid = utils.load_pkl(dataset_path + 'valid.pkl')
         self.test = utils.load_pkl(dataset_path + 'test.pkl')
         self.CAP = utils.load_pkl(dataset_path + 'CAP.pkl')
+        self.FEAT = utils.load_pkl(dataset_path + 'FEAT_key_vidID_value_features.pkl')
         self.FEAT_ROOT = feature_path
         if self.signature == 'youtube2text':
             self.train_ids = ['vid%s' % i for i in range(1, 1201)]
@@ -165,8 +168,9 @@ class Movie2Caption(object):
 
         # if len(self.word_idict) < self.n_words:
         self.n_words = len(self.word_idict)
-        
+
         if self.video_feature == 'googlenet':
+            # self.ctx_dim = 1024
             self.ctx_dim = 2048
         else:
             raise NotImplementedError()
@@ -176,10 +180,12 @@ class Movie2Caption(object):
             len(self.valid), self.mb_size_test)
         self.kf_test = utils.generate_minibatch_idx(
             len(self.test), self.mb_size_test)
-        
+
+
 def prepare_data(engine, IDs):
     seqs = []
     feat_list = []
+
     def get_words(vidID, capID):
         caps = engine.CAP[vidID]
         rval = None
@@ -190,9 +196,9 @@ def prepare_data(engine, IDs):
                 break
         assert rval is not None
         return rval
-    
+
     for i, ID in enumerate(IDs):
-        #print 'processed %d/%d caps'%(i,len(IDs))
+        # print 'processed %d/%d caps'%(i,len(IDs))
         # load GNet feature
         vidID, capID = ID.split('_')
         feat = engine.get_video_features(vidID)
@@ -219,30 +225,31 @@ def prepare_data(engine, IDs):
         seqs = new_seqs
         if len(lengths) < 1:
             return None, None, None, None
-    
+
     y = numpy.asarray(feat_list)
     y_mask = engine.get_ctx_mask(y)
     n_samples = len(seqs)
-    maxlen = numpy.max(lengths)+1
+    maxlen = numpy.max(lengths) + 1
 
     x = numpy.zeros((maxlen, n_samples)).astype('int64')
     x_mask = numpy.zeros((maxlen, n_samples)).astype('float32')
     for idx, s in enumerate(seqs):
-        x[:lengths[idx],idx] = s
-        x_mask[:lengths[idx]+1,idx] = 1.
-    
+        x[:lengths[idx], idx] = s
+        x_mask[:lengths[idx] + 1, idx] = 1.
+
     return x, x_mask, y, y_mask
-    
+
+
 def test_data_engine():
     from sklearn.cross_validation import KFold
-    video_feature = 'googlenet' 
+    video_feature = 'googlenet'
     out_of = None
     maxlen = 100
     mb_size_train = 64
     mb_size_test = 128
     maxlen = 50
-    n_words = 30000 # 25770 
-    signature = 'youtube2text' #'youtube2text'
+    n_words = 30000  # 25770
+    signature = 'youtube2text'  # 'youtube2text'
     engine = Movie2Caption('attention', signature, video_feature,
                            mb_size_train, mb_size_test, maxlen,
                            n_words,
@@ -255,12 +262,12 @@ def test_data_engine():
         i += 1
         ids = [engine.train[index] for index in idx]
         x, mask, ctx, ctx_mask = prepare_data(engine, ids)
-        print 'seen %d minibatches, used time %.2f '%(i,time.time()-t0)
+        print 'seen %d minibatches, used time %.2f ' % (i, time.time() - t0)
         if i == 10:
             break
-            
-    print 'used time %.2f'%(time.time()-t)
+
+    print 'used time %.2f' % (time.time() - t)
+
+
 if __name__ == '__main__':
     test_data_engine()
-
-

@@ -17,6 +17,8 @@ import utils
 from optimizers import adadelta, sgd
 from model_hLSTMat.layers import Layers
 from model_hLSTMat.model import Model
+from model_hLSTMat.cmb_layers import CMBLayers
+from model_hLSTMat.cmb_model import CMBModel
 
 from config import config
 from jobman import DD, expand
@@ -72,8 +74,8 @@ def train(random_seed=1234,
 
     # instance model
     layers = Layers()
-    model = Model()
-
+    # model = Model()
+    model = CMBModel()
     print 'Loading data'
     engine = data_engine.Movie2Caption('attention', dataset,
                                        video_feature,

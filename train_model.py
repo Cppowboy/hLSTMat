@@ -19,7 +19,8 @@ from model_hLSTMat.layers import Layers
 from model_hLSTMat.model import Model
 from model_hLSTMat.cmb_layers import CMBLayers
 from model_hLSTMat.cmb_model import CMBModel
-
+from model_hLSTMat.non_local_layers import NonLocalLayers
+from model_hLSTMat.non_local_model import NonLocalModel
 from config import config
 from jobman import DD, expand
 
@@ -62,7 +63,8 @@ def train(random_seed=1234,
           K=10,
           OutOf=240,
           verbose=True,
-          debug=True
+          debug=True,
+          channel=512
           ):
     rng_numpy, rng_theano = utils.get_two_rngs()
 
@@ -84,6 +86,8 @@ def train(random_seed=1234,
                                        K, OutOf)
     model_options['ctx_dim'] = engine.ctx_dim
     model_options['n_words'] = engine.n_words
+    model_options['twh'] = K
+    model_options['channel'] = channel
     print 'n_words:', model_options['n_words']
 
     # set test values, for debugging

@@ -20,8 +20,8 @@ class NonLocalLayers(object):
         return (eval(fns[0]), eval(fns[1]))
 
     def param_init_non_local_layer(self, options, params, prefix='non_local_layer', twh=7 * 7 * 28, c=512):
-        params[_p(prefix, 'W_theta')] = norm_weight(c, c, scale=0.01)
-        params[_p(prefix, 'W_phi')] = norm_weight(c, c, scale=0.01)
+        params[_p(prefix, 'W_theta')] = norm_weight(twh, c, scale=0.01)
+        params[_p(prefix, 'W_phi')] = norm_weight(c, twh, scale=0.01)
         params[_p(prefix, 'W_g')] = norm_weight(twh, twh, scale=0.01)
         return params
 
@@ -32,9 +32,9 @@ class NonLocalLayers(object):
         W_g = tparams[_p(prefix, 'W_g')]
         twh = W_g.shape[0]
         c = W_theta.shape[0]
-        output = tensor.dot(state_below, W_theta)
+        output = tensor.dot(state_below.T, W_theta)
         output = tensor.dot(output, W_phi)
-        output = tensor.dot(output, state_below.T)
+        output = tensor.dot(output, state_below)
         output = tensor.tanh(output)
         g = tensor.dot(W_g, state_below)
         return tensor.dot(output, g)

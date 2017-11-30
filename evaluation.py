@@ -6,6 +6,8 @@ import data_engine
 import metrics
 from config import config
 from model_hLSTMat.model import Model
+from model_hLSTMat.cmb_model import CMBModel
+from model_hLSTMat.non_local_model import NonLocalModel
 import utils
 import os
 
@@ -35,6 +37,8 @@ def test(model_options_file='model_options.pkl',
     print 'init params'
     t0 = time.time()
     model = Model()
+    # model = CMBModel()
+    # model = NonLocalModel()
     params = model.init_params(model_options)
 
     model_saved = from_dir + model_file

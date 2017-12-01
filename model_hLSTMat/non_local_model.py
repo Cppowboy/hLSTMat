@@ -51,8 +51,8 @@ class NonLocalModel(object):
             options, params, prefix='ff_logit',
             nin=options['dim_word'], nout=options['n_words'])
         params = self.non_local_layers.get_layer('non_local_layer')[0](options, params,
-                                                                       prefix='non_local_layer', twh=options['twh'],
-                                                                       c=options['channel'])
+                                                                       prefix='non_local_layer', twh=options['K'],
+                                                                       c=options['ctx_dim'])
         return params
 
     def build_model(self, tparams, options):
@@ -76,10 +76,10 @@ class NonLocalModel(object):
         counts = mask_ctx.sum(-1).dimshuffle(0, 'x')
 
         # non local layer
-        ctx = self.non_local_layers.get_layer('non_local_layer')[1](tparams, ctx, options,
-                                                                    prefix='non_local')
+        self_att_ctx = self.non_local_layers.get_layer('non_local_layer')[1](tparams, ctx, options,
+                                                                             prefix='non_local_layer')
 
-        ctx_ = ctx
+        ctx_ = self_att_ctx
 
         ctx0 = ctx_
         ctx_mean = ctx0.sum(1) / counts
@@ -155,7 +155,7 @@ class NonLocalModel(object):
 
         # non local layer
         ctx0 = self.non_local_layers.get_layer('non_local_layer')[1](tparams, ctx0, options,
-                                                                     prefix='non_local')
+                                                                     prefix='non_local_layer')
 
         ctx_ = ctx0
         counts = ctx_mask.sum(-1)

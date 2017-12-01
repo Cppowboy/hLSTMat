@@ -77,7 +77,8 @@ def train(random_seed=1234,
     # instance model
     layers = Layers()
     # model = Model()
-    model = CMBModel()
+    # model = CMBModel()
+    model = NonLocalModel()
     print 'Loading data'
     engine = data_engine.Movie2Caption('attention', dataset,
                                        video_feature,

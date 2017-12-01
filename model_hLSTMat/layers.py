@@ -3,15 +3,15 @@ import numpy
 import theano.tensor as tensor
 from utils import _p, norm_weight, ortho_weight, tanh, linear
 
-class Layers(object):
 
+class Layers(object):
     def __init__(self):
         # layers: 'name': ('parameter initializer', 'feedforward')
         self.layers = {
             'ff': ('self.param_init_fflayer', 'self.fflayer'),
             'lstm': ('self.param_init_lstm', 'self.lstm_layer'),
             'lstm_cond': ('self.param_init_lstm_cond', 'self.lstm_cond_layer'),
-            }
+        }
 
     def get_layer(self, name):
         """
@@ -245,6 +245,7 @@ class Layers(object):
             W_sel = tensor.alloc(0., 1)
             b_sel = tensor.alloc(0., 1)
         U = tparams[_p(prefix, 'U')]
+
         # Wc = tparams[_p(prefix, 'Wc')]
 
         def _slice(_x, n, dim):

@@ -46,7 +46,7 @@ class NonLocalLayers(object):
             y = tensor.dot(y, W_phi)
             y = tensor.batched_dot(y, state_below.transpose(0, 2, 1))
             y = y.reshape((-1, twh))
-            y = y.softmax(y)
+            y = tensor.nnet.softmax(y)
             y = y.reshape(-1, twh, twh)
             y = tensor.dot(y, g)
         else:

@@ -47,7 +47,7 @@ class NonLocalLayers(object):
             y = tensor.batched_dot(y, state_below.transpose(0, 2, 1))
             y = y.reshape((-1, twh))
             y = tensor.nnet.softmax(y)
-            y = y.reshape(-1, twh, twh)
+            y = y.reshape((-1, twh, twh))
             y = tensor.dot(y, g)
         else:
             raise Exception('bad input dim %d' % (state_below.ndim))

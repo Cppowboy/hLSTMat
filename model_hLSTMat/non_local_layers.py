@@ -31,20 +31,24 @@ class NonLocalLayers(object):
         W_phi = tparams[_p(prefix, 'W_phi')]
         W_g = tparams[_p(prefix, 'W_g')]
 
-        def step(x):
-            y = tensor.dot(x, W_theta)
-            y = tensor.dot(y, W_phi)
-            y = tensor.dot(y, x.T)
-            y = tensor.nnet.softmax(y)
-            g = tensor.dot(W_g, x)
-            y = tensor.dot(y, g)
-            return y
+        c = W_theta.shape[0]
+        twh = W_g.shape[0]
 
-        ans = None
+        g = tensor.dot(W_g, state_below)
         if state_below.ndim == 2:
-            ans = step(state_below)
+            y = tensor.dot(state_below, W_theta)
+            y = tensor.dot(y, W_phi)
+            y = tensor.dot(y, state_below.T)
+            y = tensor.nnet.softmax(y)
+            y = tensor.dot(y, g)
         elif state_below.ndim == 3:
-            ans, _ = theano.scan(step, sequences=state_below)
+            y = tensor.dot(state_below, W_theta)
+            y = tensor.dot(y, W_phi)
+            y = tensor.batched_dot(y, state_below.transpose(0, 2, 1))
+            y = y.reshape((-1, twh))
+            y = tensor.nnet.softmax(y)
+            y = y.reshape((-1, twh, twh))
+            y = tensor.dot(y, g)
         else:
             raise Exception('bad input dim %d' % (state_below.ndim))
-        return ans
+        return y

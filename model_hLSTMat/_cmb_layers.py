@@ -224,6 +224,8 @@ class CMBLayers(object):
         def _slice(_x, n, dim):
             if _x.ndim == 3:
                 return _x[:, :, n * dim:(n + 1) * dim]
+            elif _x.ndim == 2:
+                return _x[:,n * dim:(n + 1) * dim]
             return _x[:, n * dim:(n + 1) * dim]
 
         def _step(m_, x_,  # sequences

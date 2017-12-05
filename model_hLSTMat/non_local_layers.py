@@ -34,13 +34,13 @@ class NonLocalLayers(object):
         c = W_theta.shape[0]
         twh = W_g.shape[0]
 
-        g = tensor.dot(W_g, state_below)
         if state_below.ndim == 2:
             y = tensor.dot(state_below, W_theta)
             y = tensor.dot(y, W_phi)
             y = tensor.dot(y, state_below.T)
             y = tensor.nnet.softmax(y)
-            y = tensor.dot(y, g)
+            y = tensor.dot(y, W_g)
+            y = tensor.dot(y, state_below)
         elif state_below.ndim == 3:
             y = tensor.dot(state_below, W_theta)
             y = tensor.dot(y, W_phi)
@@ -48,7 +48,8 @@ class NonLocalLayers(object):
             y = y.reshape((-1, twh))
             y = tensor.nnet.softmax(y)
             y = y.reshape((-1, twh, twh))
-            y = tensor.dot(y, g)
+            y = tensor.dot(y, W_g)
+            y = tensor.batched_dot(y, state_below)
         else:
             raise Exception('bad input dim %d' % (state_below.ndim))
         return y

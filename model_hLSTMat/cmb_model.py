@@ -2,7 +2,7 @@ import numpy
 import theano
 import theano.tensor as tensor
 from layers import Layers
-from cmb_layers import CMBLayers
+from _cmb_layers import CMBLayers
 from collections import OrderedDict
 import utils
 import copy

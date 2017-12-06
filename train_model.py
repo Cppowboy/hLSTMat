@@ -21,6 +21,8 @@ from model_hLSTMat.cmb_layers import CMBLayers
 from model_hLSTMat.cmb_model import CMBModel
 from model_hLSTMat.non_local_layers import NonLocalLayers
 from model_hLSTMat.non_local_model import NonLocalModel
+from model_hLSTMat.lstm_nonlocal_layers import LSTMNonLocalLayers
+from model_hLSTMat.lstm_nonlocal_model import LSTMNonLocalModel
 from config import config
 from jobman import DD, expand
 
@@ -64,7 +66,8 @@ def train(random_seed=1234,
           OutOf=240,
           verbose=True,
           debug=True,
-          channel=512
+          channel=512,
+          T=28,wh=49
           ):
     rng_numpy, rng_theano = utils.get_two_rngs()
 
@@ -78,7 +81,8 @@ def train(random_seed=1234,
     layers = Layers()
     # model = Model()
     # model = CMBModel()
-    model = NonLocalModel()
+    # model = NonLocalModel()
+    model = LSTMNonLocalModel()
     print 'Loading data'
     engine = data_engine.Movie2Caption('attention', dataset,
                                        video_feature,

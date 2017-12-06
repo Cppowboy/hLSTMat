@@ -2,7 +2,7 @@ from jobman import DD
 
 # the dir where there should be a subdir named 'youtube2text_iccv15'
 RAB_DATASET_BASE_PATH = '/mnt/lustre/panyinxu/data/msvd/youtube2text_iccv15/'
-RAB_FEATURE_BASE_PATH = '/mnt/lustre/panyinxu/data/msvd/npy2/'
+RAB_FEATURE_BASE_PATH = '/mnt/lustre/panyinxu/data/msvd/npy3/'
 # the dir where all the experiment data is dumped.
 RAB_EXP_PATH = './results/hLSTMat/'
 
@@ -36,7 +36,7 @@ config = DD({
         'maxlen': 30,  # max length of the descprition
         'optimizer': 'adadelta',
         'clip_c': 10.,
-        'batch_size': 64,  # for trees use 25
+        'batch_size': 16,  # for trees use 25
         'valid_batch_size': 200,
         # in the unit of minibatches
         'dispFreq': 10,
@@ -46,7 +46,9 @@ config = DD({
         # blue, meteor, or both
         'metric': 'everything',  # set to perplexity on DVS
         'use_dropout': True,
-        'K': 28,  # 26 when compare
+        'K': 28 * 7 * 7,  # 26 when compare
+        'T': 28,
+        'wh': 49,
         'OutOf': None,  # used to be 240, for motionfeature use 26
         'verbose': True,
         'debug': False,

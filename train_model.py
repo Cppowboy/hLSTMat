@@ -67,7 +67,7 @@ def train(random_seed=1234,
           verbose=True,
           debug=True,
           channel=512,
-          T=28,wh=49
+          T=28, wh=49
           ):
     rng_numpy, rng_theano = utils.get_two_rngs()
 
@@ -396,6 +396,7 @@ def train(random_seed=1234,
                 # save best model according to the best blue or meteor
                 if len(history_errs) > 1 and \
                                 valid_B4 > numpy.array(history_errs)[:-1, 11].max():
+                    best_p = utils.unzip(tparams)
                     print 'Saving to %s...' % save_model_dir,
                     numpy.savez(
                         save_model_dir + 'model_best_blue_or_meteor.npz',
@@ -454,14 +455,17 @@ def train(random_seed=1234,
     valid_err = 0
     test_err = 0
     if not debug:
+        train_err, train_perp = model.pred_probs(
+            engine, 'train', f_log_probs,
+            verbose=model_options['verbose'])
         # if valid:
         valid_err, valid_perp = model.pred_probs(
             engine, 'valid', f_log_probs,
             verbose=model_options['verbose'])
         # if test:
-        # test_err, test_perp = self.pred_probs(
-        #    'test', f_log_probs,
-        #    verbose=model_options['verbose'])
+        test_err, test_perp = model.pred_probs(
+            'test', f_log_probs,
+            verbose=model_options['verbose'])
 
     print 'stopped at epoch %d, minibatch %d, ' \
           'curent Train %.2f, current Valid %.2f, current Test %.2f ' % (
